@@ -1,0 +1,571 @@
+\documentclass[aspectratio=169]{beamer}
+\usepackage{educast-beamer}
+
+\input{assets/settings.tex}
+\addbibresource{library.bib}
+
+\title{OAuth 2.0}
+\author{Jonathan Neugebauer}
+\date{March 16, 2021}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\begin{frame}{Use Case}
+	\centering
+	\includegraphics[width=0.8\textwidth]{figures/situation}
+	\vskip4mm
+	\begin{itemize}
+		\pause
+		\item \emph{Possible Solution}:
+		\begin{itemize}
+			\item Asking for user's credentials
+		\end{itemize}
+		\pause
+		\item \emph{Problems}:
+		\begin{itemize}
+			\item Credentials should not be passed to other applications
+			\item Password has to be stored for future use
+			\item Access rights cannot be restricted
+			\item Selectively revoking access for a single application is not possible
+			\item \dots
+		\end{itemize}
+		\pause
+		\vskip1em
+		\item[$\Rightarrow$] \emph{Goal: Gaining access without the user's credentials}
+	\end{itemize}
+	\vspace*{-2em}
+	\fnote{\cite[\pf{4}]{RFC6749}}
+\end{frame}
+
+\begin{frame}[label=oauth-intro]{OAuth}
+	\begin{columns}
+		\begin{column}{0.7\textwidth}
+			\begin{itemize}
+				\item Current Version: 2.0
+				\item Widely used standard for \emph{access delegation}
+				\begin{itemize}
+					\item Google APIs % https://developers.google.com/identity/protocols/oauth2
+					\item GitHub API % https://developer.github.com/v3/oauth/
+					\item GitLab API % https://docs.gitlab.com/ee/api/
+					\item \dots
+				\end{itemize}
+				\item Additional \emph{authorization layer}
+				\begin{itemize}
+					\item Separates third-party application and user
+					\item Both use different credentials
+				\end{itemize}
+				\item Specified in \emph{RFC 6749}
+			\end{itemize}
+		\end{column}
+		
+		\begin{column}{0.3\textwidth}
+			\includegraphics[width=0.8\textwidth]{figures/oauth_logo}
+		\end{column}
+	\end{columns}
+\end{frame}
+
+\begin{frame}{Motivation}
+	\begin{overprint}
+		\onslide<1 |handout:0>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/motivation-01}}
+		\onslide<2 |handout:0>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/motivation-02}}
+		\onslide<3| handout:0>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/motivation-03}}
+		\onslide<4| handout:1>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/motivation-04}}
+	\end{overprint}
+\end{frame}
+
+\begin{frame}{Roles}
+	\begin{block}{Resource Owner}
+		An \emph{entity} capable of \emph{granting access} to a \emph{protected resource}. \hfill \scriptsize{\cite[\p{6}]{RFC6749}}
+	\end{block}
+	\pause
+	\vspace*{-1mm}
+	\begin{block}{Resource Server}
+		The \emph{server hosting} the \emph{protected resources}. \hfill \scriptsize{\cite[\p{6}]{RFC6749}}
+	\end{block}
+	\pause
+	\vspace*{-1mm}
+	\begin{block}{Client}
+		An \emph{application} making protected resource \emph{requests on behalf of the resource owner} and with its authorization. \hfill \scriptsize{\cite[\p{6}]{RFC6749}}
+	\end{block}
+	\pause
+	\vspace*{-1mm}
+	\begin{block}{Authorization Server}
+		The \emph{server issuing access tokens to the client} after successfully \emph{authenticating} the resource owner and obtaining \emph{authorization}. \hfill \scriptsize{\cite[\p{6}]{RFC6749}}
+	\end{block}
+\end{frame}
+
+\begin{frame}{Abstract Protocol Flow}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/abstract-protocol-flow-01}}
+		\onslide<2| handout:0>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/abstract-protocol-flow-02}}
+		\onslide<3| handout:0>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/abstract-protocol-flow-03}}
+		\onslide<4| handout:1>
+		\centerline{\includegraphics[height=0.85\textheight]{figures/abstract-protocol-flow-04}}
+	\end{overprint}
+	\vspace*{-2em}
+	\onslide<4>{\fnote{\cite[\pf{7}]{RFC6749}}}
+\end{frame}
+
+\begin{frame}{Definitions}
+	\begin{block}{Authorization Grant}
+		\emph{Credential representing} the \emph{resource owner’s authorization} to access its protected resources. \hfill {\scriptsize\cite[\p{8}]{RFC6749}}
+	\end{block}
+	\pause
+	\vspace*{-1.7mm}
+	\begin{block}{Access Token}
+		\emph{Credential} used by the client \emph{to access protected resources}.
+		\begin{itemize}
+			\item Restriction of \emph{scope} and \emph{duration} possible \hfill {\scriptsize\cite[\p{10}]{RFC6749}}
+		\end{itemize}
+	\end{block}
+	\pause
+	\vspace*{-1.7mm}
+	\begin{block}{Refresh Token}
+		\emph{Credential} used to \emph{obtain new access tokens}.
+		\begin{itemize}
+			\item When access token \emph{expires} or becomes \emph{invalid} \hfill {\scriptsize\cite[\pf{10}]{RFC6749}}
+		\end{itemize}
+	\end{block}
+\end{frame}
+
+\begin{frame}{Protocol Flow Variants}
+	\begin{itemize}
+		\item \emph{Authorization Code Flow} \hfill {\scriptsize\cite[\pff{24}]{RFC6749}}
+		\begin{itemize}
+			\item Access token is directly sent to client without passing the resource owner
+			\item Most commonly used
+		\end{itemize}
+		\pause
+		\item {\color<1-2| handout:0>{ed-blue}\textbf{Implicit Grant Flow}} \hfill {\scriptsize\color<3>{black!40}{\cite[\pff{31}]{RFC6749}}}
+		\begin{itemize}
+			\item \color<3>{black!40}{Simplified flow optimized for client-side web applications}
+			\item \color<3>{black!40}{Obsolete in OAuth 2.1 draft \gray{($\to$ security drawbacks)}}
+		\end{itemize}
+		\item {\color<1-2| handout:0>{ed-blue}\textbf{Resource Owner Password Credentials Flow}} \hfill {\scriptsize\color<3>{black!40}{\cite[\pff{37}]{RFC6749}}}
+		\begin{itemize}
+			\item \color<3>{black!40}{Username and password are exchanged for an access token}
+			\item \color<3>{black!40}{Obsolete in OAuth 2.1 draft \gray{($\to$ security drawbacks)}}
+		\end{itemize}
+		\item {\color<1-2| handout:0>{ed-blue}\textbf{Client Credentials Flow}} \hfill {\scriptsize\color<3>{black!40}{\cite[\pff{40}]{RFC6749}}}
+		\begin{itemize}
+			\item \color<3>{black!40}{Client identifier and secret are exchanged for an access token}
+			\item \color<3>{black!40}{For resources under the control of the client}
+		\end{itemize}
+	\end{itemize}
+	\onslide<2->{\fnote{\cite{ietf-oauth-2.1,ietf-oauth-security}}}
+\end{frame}
+
+\begin{frame}{Client Types}
+	\begin{itemize}
+		\item Clients have to \emph{register}
+		\begin{itemize}
+			\item Authorization server issues \emph{client identifier} (and \emph{client secret})
+		\end{itemize}
+		\pause
+		\item \emph{Confidential}
+		\begin{itemize}
+			\item \emph{Capable} of maintaining the confidentiality of their credentials
+			\item Web applications with backend
+			\item Client authentication with \emph{client identifier} and \emph{client secret} possible
+		\end{itemize}
+		\pause
+		\item \emph{Public}
+		\begin{itemize}
+			\item \emph{Incapable} of maintaining the confidentiality of their credentials
+			\item Client-side web applications, native applications \gray{(mobile, desktop)}
+			\item Client authentication not possible
+		\end{itemize}
+	\end{itemize}
+	\fnote{\cite[\pff{13}]{RFC6749}}
+\end{frame}
+
+\makesection{Authorization Code Flow}[
+	\label{auth-code-flow}
+	\tikz[overlay,remember picture]{
+        \node[opacity=0.25, at=(current page.center), yshift=0.99cm] {
+			\includegraphics[trim=0 7cm 0 0cm, clip, width=\paperwidth]{figures/1751463}
+        };
+    }
+]
+
+\begin{frame}{Authorization Code Flow}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-01}}
+		\onslide<2| handout:1>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-02}}
+	\end{overprint}
+	\vspace{-2em}
+	\onslide<2>{\fnote{\cite[\p{24}]{RFC6749}}}
+\end{frame}
+
+\begin{frame}[fragile]{Authorization Request Example}
+
+\begin{textcode}
+|\textbf{GET}|   /authorize
+       ?|\textbf{response\_type}|=code
+       &|\textbf{client\_id}|=s6BhdRkqt3
+       &|\textbf{state}|=xyz
+       &|\textbf{redirect\_uri}|=https://annotation-tool.opencast.org/cb
+       HTTP/1.1
+|\textbf{Host}|: stable.opencast.org
+\end{textcode}
+
+\hfill \gray{\tiny{line breaks and omitted URL encoding for better readability}}
+	
+	\emph{Parameters:}
+	\begin{itemize}
+		\item \code{\textbf{response\_type}}: has to be \code{\textbf{code}} for this protocol flow variant
+		\item \code{\textbf{client\_id}}: client identifier \hfill \gray{(see above)}
+		\item \code{\textbf{state}}: to prevent Cross-Site-Request-Forgery attacks
+		\item \code{\textbf{redirect\_uri}}: client URI to redirect to after authorization
+	\end{itemize}
+
+	\fnote{\cite[\pf{25}]{RFC6749}}
+\end{frame}
+
+\begin{frame}{Authorization Code Flow}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-02}}
+		\onslide<2| handout:1>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-03}}
+	\end{overprint}
+	\vspace{-2em}
+	\fnote{\cite[\p{24}]{RFC6749}}
+\end{frame}
+
+\begin{frame}{User Authentication and Client Authorization}
+	\centering
+	\includegraphics[height=0.85\textheight]{figures/motivation-01}
+\end{frame}
+
+\begin{frame}{Authorization Code Flow}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-03}}
+		\onslide<2| handout:1>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-04}}
+	\end{overprint}
+	\vspace{-2em}
+	\fnote{\cite[\p{24}]{RFC6749}}
+\end{frame}
+
+\begin{frame}[fragile]{Authorization Response Example}
+\begin{textcode}
+|\textbf{HTTP/1.1 302 Found}|
+|\textbf{Location}|: https://annotation-tool.opencast.org/cb
+           ?|\textbf{code}|=SplxlOBeZQQYbYS6WxSbIA
+           &|\textbf{state}|=xyz
+\end{textcode}
+
+\hfill \gray{\tiny{line breaks for better readability}}
+	
+	\emph{Parameters:}
+	\begin{itemize}
+		\item \code{\textbf{code}}: authorization grant for requesting an access token
+		\item \code{\textbf{state}}: to prevent Cross-Site-Request-Forgery attacks \hfill \gray{(see above)}
+	\end{itemize}
+	
+	\fnote{\cite[\pf{26}]{RFC6749}}
+\end{frame}
+
+\begin{frame}{Authorization Code Flow}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-04}}
+		\onslide<2| handout:1>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-05}}
+	\end{overprint}
+	\vspace{-2em}
+	\fnote{\cite[\p{24}]{RFC6749}}
+\end{frame}
+
+\begin{frame}[fragile]{Access Token Request Example}
+\begin{textcode}
+|\textbf{POST}| /token HTTP/1.1
+|\textbf{Host}|: stable.opencast.org
+|\textbf{Authorization}|: Basic czZCaGRSa3F0MzpnWDFmQmF0M2JW
+|\textbf{Content-Type}|: application/x-www-form-urlencoded
+  |\textbf{grant\_type}|=authorization_code
+  &|\textbf{code}|=SplxlOBeZQQYbYS6WxSbIA
+  &|\textbf{redirect\_uri}|=https://annotation-tool.opencast.org/cb
+\end{textcode}
+
+\hfill \gray{\tiny{line breaks and omitted URL encoding for better readability}}
+	
+	\vspace*{-2mm}
+	\emph{Client Authentication:}
+	\begin{itemize}
+		\item Basic authentication with \code{\textbf{client\_id}} and \code{\textbf{client\_secret}}
+	\end{itemize}
+	\emph{Parameters:}
+	\begin{itemize}
+		\item \code{\textbf{grant\_type}}: has to be \code{\textbf{authorization\_code}} for this flow
+		\item \code{\textbf{code}}: authorization grant \hfill \gray{(see above)}
+		\item \code{\textbf{redirect\_uri}}: redirection URI \hfill \gray{(see above)}
+	\end{itemize}
+	\vspace{-1mm}
+	\fnote{\cite[\pf{29}]{RFC6749}}
+\end{frame}
+
+\begin{frame}{Authorization Code Flow}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-05}}
+		\onslide<2| handout:1>
+		\centerline{\includegraphics[height=0.84\textheight]{figures/authorization-code-flow-06}}
+	\end{overprint}
+	\vspace{-2em}
+	\fnote{\cite[\p{24}]{RFC6749}}
+\end{frame}
+
+\begin{frame}[fragile]{Access Token Response Example}
+\begin{jsoncode}
+{
+	"access_token": "2YotnFZFEjr1zCsicMWpAA",
+	"token_type": "Bearer",
+	"expires_in": 3600,
+	"refresh_token": "tGzv3JOkF0XG5Qx2TlKWIA",
+	"example_parameter": "example_value"
+}
+\end{jsoncode}
+\vspace{2mm}
+	\emph{Contents:}
+	\begin{itemize}
+		\item \code{\textbf{access\_token}}: access token \hfill \gray{(see above)}
+		\item \code{\textbf{token\_type}}: type of the access tokens
+		\item \code{\textbf{expires\_in}}: lifetime of the token
+		\item \code{\textbf{refresh\_token}}: refresh token \hfill \gray{(see above)}
+		\item Additional parameters can optionally be used
+	\end{itemize}
+	\vspace*{-2mm}
+	\fnote{\cite[\pf{30}]{RFC6749}}
+\end{frame}
+
+\begin{frame}[fragile]{Access Token Usage}
+\begin{textcode}
+|\textbf{GET}|   /api/version
+      HTTP/1.1
+|\textbf{Authorization}|: Bearer 2YotnFZFEjr1zCsicMWpAA
+|\textbf{Host}|: stable.opencast.org
+\end{textcode}
+
+\hfill \gray{\tiny{line breaks for better readability}}
+	
+	\begin{itemize}
+		\item Access token is used as \emph{bearer token} in the \emph{authorization header}
+	\end{itemize}
+	
+	\fnote{\cite[\p{5}]{RFC6750}}
+\end{frame}
+
+\begin{frame}{Authorization Code Interception Attack}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.7\textheight]{figures/authorization-code-interception-01}}
+		\onslide<2-| handout:1>
+		\centerline{\includegraphics[height=0.7\textheight]{figures/authorization-code-interception-02}}
+	\end{overprint}
+	\begin{itemize}
+		\item<3> Pre-condition: redirect URI is registered by both clients
+	\end{itemize}
+	\vspace*{-1.5em}
+	\onslide<3>{\fnote{\cite[\pff{2}]{RFC7636}}}
+\end{frame}
+
+\begin{frame}{Authorization Code Flow + PKCE}
+	\vspace*{0.5em}
+	\begin{overprint}
+		\onslide<1| handout:0>
+		\centerline{\includegraphics[height=0.7\textheight]{figures/pkce-01}}
+		\onslide<2| handout:1>
+		\centerline{\includegraphics[height=0.7\textheight]{figures/pkce-02}}
+	\end{overprint}
+	\vspace*{0.5em}
+	\centering {\small \texttt{t}: transformation \hspace{2em} \texttt{t\_m}: transformation method}
+	\vspace*{-1em}
+	\fnote{\cite[\pf{4}]{RFC7636}}
+\end{frame}
+
+\begin{frame}{Proof Key for Code Exchange}
+	\begin{itemize}
+		\item \emph{Code Verifier} \hfill \texttt{code\_verifier}
+		\begin{itemize}
+			\item Cryptographically random string used to correlate the authorization request to the token request
+			\begin{itemize}
+				\item 43 - 128 characters
+			\end{itemize}
+		\end{itemize}
+		\pause
+		\item \emph{Code Challenge} \hfill \texttt{t(code\_verifier)}
+		\begin{itemize}
+			\item Challenge derived from the code verifier
+		\end{itemize}
+		\pause
+		\item \emph{Code Challenge Method} \hfill \texttt{t\_m}
+		\begin{itemize}
+			\item Method that was used to derive code challenge
+			\begin{itemize}
+				\item \gray{Plain: \texttt{code\_challenge} is identical to \texttt{code\_verifier}}
+				\item S256: \texttt{code\_challenge} is Base64 encoded SHA-256 hashed \texttt{code\_verifier}
+			\end{itemize}
+		\end{itemize}
+	\end{itemize}
+
+	\fnote{\cite[\pff{7}]{RFC7636}}
+\end{frame}
+
+\makesection{Best Practices}[
+	\label{best-practices}
+	\tikz[overlay,remember picture]{
+        \node[opacity=0.25, at=(current page.center), yshift=0.752cm] {
+			\includegraphics[trim=0 3.152cm 0 0cm, clip, width=\paperwidth]{figures/2946959}
+        };
+    }
+]
+
+\begin{frame}{Web Apps with Backend \hfill {\large\gray{$\to$ Annotation Tool}}}
+	\begin{itemize}
+		\item Authorization Code Flow + PKCE
+		\item Client authentication with client identifier and client secret
+		\begin{itemize}
+			\item[$\Rightarrow$] Confidential client
+		\end{itemize}
+		\item As discussed previously
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Client-Side Web Apps \hfill {\large\gray{$\to$ Opencast Studio}}}
+	\begin{columns}
+		\begin{column}{0.56\textwidth}
+			\begin{itemize}
+				\item Authorization Code Flow + PKCE
+				\item Hard coding the client secret is \\ discouraged \gray{($\to$ omit it)}
+				\begin{itemize}
+					\item[$\Rightarrow$] Public client
+				\end{itemize}
+				\item Limit access token lifetime \gray{(\eg 1h)}
+				\item Rotate refresh token upon issuing \\ new access token
+				\item Limit overall refresh token \\ lifetime \gray{(\eg 24h)}
+				\begin{itemize}
+					\item[$\Rightarrow$] New login required after 24h
+				\end{itemize}
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.45\textwidth}
+			\includegraphics[width=1\textwidth]{figures/authorization-flow-cs-web-apps}
+		\end{column}
+	\end{columns}
+	\vspace*{1em}
+	\fnote{\cite{ietf-oauth-browser}}
+\end{frame}
+
+\begin{frame}{Native Apps \hfill {\large\gray{$\to$ Mobile App}}}
+	\begin{columns}
+		\begin{column}{0.5\textwidth}
+			\begin{itemize}
+				\item Authorization Code Flow + PKCE
+				\item Hard coding the client secret is discouraged \gray{($\to$ omit it)}
+				\begin{itemize}
+					\item[$\Rightarrow$] Public client
+				\end{itemize}
+				\item User authenticates and authorizes in browser
+				\item Redirect URI
+				\begin{itemize}
+					\item \eg custom URI scheme, loopback interface
+				\end{itemize}
+			\end{itemize}
+		\end{column}
+		\begin{column}{0.5\textwidth}
+			\vspace*{0.5em}
+			\includegraphics[width=1\textwidth]{figures/authorization-flow-native-apps}
+		\end{column}
+	\end{columns}
+	\vspace*{1em}
+	\fnote{\cite{RFC8252}}
+\end{frame}
+
+\begin{frame}{General Best Practices}
+	\begin{itemize}
+		\item \emph{Security}
+		\begin{itemize}
+			\item OAuth 2.0 Threat Model and Security Considerations \cite{RFC6819}
+			\item OAuth Security Best Current Practice \cite{ietf-oauth-security}
+		\end{itemize}
+		\pause
+		\item \emph{OAuth Extensions}
+		\begin{itemize}
+			\item Dynamic Client Registration Protocol \cite{RFC7591}
+			\begin{itemize}
+				\item Mechanisms for dynamically registering clients with authorization servers
+			\end{itemize}
+			% \item Mutual-TLS Client Authentication and Certificate-Bound Access Tokens \cite{RFC8705}
+			% \begin{itemize}
+			% 	\item Mutual TLS authentication with X.509 certificates
+			% \end{itemize}
+			\item \dots
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\section{Conclusion}
+
+\begin{frame}{Conclusion}
+	\begin{itemize}
+		\item OAuth is widely used standard for \emph{access delegation}
+		\item Current best practice: \emph{Authorization Code Flow + PKCE}
+		\pause
+		\item Required \emph{server endpoints}
+		\begin{itemize}
+			\item Authorization endpoint
+			\item Access token endpoint
+		\end{itemize}
+		\item Required \emph{client endpoints}
+		\begin{itemize}
+			\item Callback endpoint
+		\end{itemize}
+		\pause
+		\item \emph{Additional considerations} needed for \emph{public clients}
+		\begin{itemize}
+			\item Native apps
+			\item Client-side web apps
+		\end{itemize}
+		\pause
+		\item \emph{Authentication} based on OAuth 2.0: \emph{OpenID Connect}
+		\begin{itemize}
+			\item Talk at Opencast Summit
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\makeend{Thank You!}
+\makeref
+
+\begin{frame}{Image Credits}
+	\footnotesize
+	\begin{tabular}{ll} 
+		\textbf{Slide \ref{oauth-intro}}: & \href{http://wiki.oauth.net/w/page/12238520/Logo}{oauth.net} \\
+		\textbf{Slide \ref{auth-code-flow}}: & \href{https://pixabay.com/images/id-1751463/}{pixabay.com -- David Mark} \\
+		\textbf{Slide \ref{best-practices}}: & \href{https://pixabay.com/images/id-2946959/}{pixabay.com -- Ylanite Koppens}
+	\end{tabular}
+\end{frame}
+
+\end{document}
